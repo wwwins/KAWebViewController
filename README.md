@@ -45,6 +45,26 @@ Pushing the ViewController programmatically works, but it is not supported.
 NSString *params = [NSString stringWithFormat:@"Token=%@",[[HVPApiManager sharedManager] token]];
 [vc postWithURL:[NSURL URLWithString:@"yourURL"] withParams:params];
 ```
+### call javascript
+```objc
+#define EVENT_FROM_WEBVEIEW_TO_LOGIN @"ModalSegueFromWebViewToLogin"
+#define EVENT_CALLBACK_FROM_WEBVIEW_TO_LOGIN @"ModalSegueFromWebViewToLoginCallBack"
+```
+```objc
+// pseudo code in login controller.
+addEventListener(self,@selector(showLogin),EVENT_FROM_WEBVEIEW_TO_LOGIN,nil);
+
+// dispatch event after login.
+double delayInSeconds = 0.5;
+dispatch_time_t popTime = dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delayInSeconds * NSEC_PER_SEC));
+dispatch_after(popTime, dispatch_get_main_queue(), ^(void) {
+  dispatchEventWithData(EVENT_CALLBACK_FROM_WEBVIEW_TO_LOGIN, nil, (@{@"Token":_token, @"Success":@1}));
+
+});
+```
+```objc
+// perfom a loginCallBackWithData method in KAWebViewController.
+```
 
 ## Roadmap
 
