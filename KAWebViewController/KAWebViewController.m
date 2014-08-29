@@ -58,6 +58,18 @@
     [self.webView loadRequest:[NSURLRequest requestWithURL:self.url]];
 }
 
+- (void)postWithURL:(NSURL *)url withParams:(NSString *)params;
+{
+  _url = url;
+  self.webView.delegate = self;
+  self.webView.scalesPageToFit = YES;
+  NSMutableURLRequest *request = [[NSMutableURLRequest alloc]initWithURL: self.url];
+  [request setHTTPMethod: @"POST"];
+  [request setHTTPBody: [params dataUsingEncoding: NSUTF8StringEncoding]];
+  [self.webView loadRequest: request];
+}
+
+
 - (void)setButtonActions
 {
     self.toolbar.refreshButton.action = @selector(refreshPage);

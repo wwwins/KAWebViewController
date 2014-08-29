@@ -12,4 +12,6 @@
 
 @property (strong, nonatomic) NSURL *url;
 
+- (void)postWithURL:(NSURL *)url withParams:(NSString *)params;
+
 @end

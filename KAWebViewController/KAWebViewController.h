@@ -18,4 +18,6 @@
 //designated initializer, however the url can also be set by property
 - (instancetype)initWithURL:(NSURL *)url;
 
+- (void)postWithURL:(NSURL *)url withParams:(NSString *)params;
+
 @end

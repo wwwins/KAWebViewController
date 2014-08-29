@@ -30,6 +30,14 @@
     self.viewControllers = @[self.webViewController];
 }
 
+- (void)postWithURL:(NSURL *)url withParams:(NSString *)params
+{
+  _url = url;
+  self.webViewController.url = url;
+  [self.webViewController postWithURL:url withParams:params];
+  self.viewControllers = @[self.webViewController];
+}
+
 - (KAWebViewController *)webViewController
 {
     if (!_webViewController) {
