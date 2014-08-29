@@ -40,6 +40,12 @@ For the modal segue, use `KAWModalWebViewController` instead. No need to import 
 
 Pushing the ViewController programmatically works, but it is not supported.
 
+###POST request
+```objc
+NSString *params = [NSString stringWithFormat:@"Token=%@",[[HVPApiManager sharedManager] token]];
+[vc postWithURL:[NSURL URLWithString:@"yourURL"] withParams:params];
+```
+
 ## Roadmap
 
 I do not know how far I want this project to go. 
