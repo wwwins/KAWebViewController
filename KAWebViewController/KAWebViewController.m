@@ -13,10 +13,21 @@
 #define BACK_BUTTON @"KAWBack"
 #define IPAD UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad
 
-@interface KAWebViewController () <UIWebViewDelegate, UIScrollViewDelegate>
+#define UIAlertView_Alert 1
+#define UIAlertView_Confirm 2
+
+#define EVENT_FROM_WEBVEIEW_TO_LOGIN @"ModalSegueFromWebViewToLogin"
+#define EVENT_CALLBACK_FROM_WEBVIEW_TO_LOGIN @"ModalSegueFromWebViewToLoginCallBack"
+
+@interface KAWebViewController () <UIWebViewDelegate, UIScrollViewDelegate, UIAlertViewDelegate>
 
 @property (strong, nonatomic) UIWebView *webView;
 @property (strong, nonatomic) KAWToolbarItems *toolbar;
+
+@property NSString *alertCallback;
+@property NSString *confirmCallback;
+@property NSString *externalCallback;
+@property NSString *callbackFn;
 
 @end
 
@@ -68,7 +79,6 @@
   [request setHTTPBody: [params dataUsingEncoding: NSUTF8StringEncoding]];
   [self.webView loadRequest: request];
 }
-
 
 - (void)setButtonActions
 {
@@ -156,16 +166,27 @@
             self.navigationItem.rightBarButtonItems = self.toolbar.toolBarItemsWhenDoneLoading.reverseObjectEnumerator.allObjects;
         }
         
-        self.title = [self.webView stringByEvaluatingJavaScriptFromString:@"document.title"];
+        //self.title = [self.webView stringByEvaluatingJavaScriptFromString:@"document.title"];
 
     }
 }
 
+#pragma mark - add event listener for the login callback
+
+- (void)viewWillAppear:(BOOL)animated
+{
+  [super viewWillAppear:animated];
+  
+  addEventListener(self, @selector(loginCallBackWithData:), EVENT_CALLBACK_FROM_WEBVIEW_TO_LOGIN, nil);
+}
+
+
 - (void)viewWillDisappear:(BOOL)animated
 {
-    [super viewWillDisappear:animated];
-    
-    [self.navigationController setToolbarHidden:YES animated:YES];
+  [super viewWillDisappear:animated];
+  
+  [self.navigationController setToolbarHidden:YES animated:YES];
+  removeEventListener(self, EVENT_CALLBACK_FROM_WEBVIEW_TO_LOGIN, nil);
 }
 
 #pragma mark - UIWebViewDelegate
@@ -186,6 +207,96 @@
 {
     [[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:NO];
     [self updateUI];
+}
+
+- (BOOL)webView:(UIWebView *)webView shouldStartLoadWithRequest:(NSURLRequest *)request navigationType:(UIWebViewNavigationType)navigationType
+{
+  
+  NSLog(@">>>request=%@",request.URL.absoluteString);
+  
+  if([request.URL.scheme isEqual:@"jsonp"])
+  {
+    
+    NSDictionary *json =[NSJSONSerialization JSONObjectWithData: [request.URL.host dataUsingEncoding:NSUTF8StringEncoding] options: NSJSONReadingMutableContainers error: nil];
+    NSString *name=[json objectForKey:@"name"];
+    NSArray *params=[json objectForKey:@"params"];
+    NSString *callback=[json objectForKey:@"callback"];
+    
+    if([name isEqualToString:@"alert"])
+    {
+      
+      UIAlertView *alert = [[UIAlertView alloc] initWithTitle:[params objectAtIndex:0]
+                                                      message:[params objectAtIndex:1]
+                                                     delegate:self
+                                            cancelButtonTitle:@"確定"
+                                            otherButtonTitles:nil];
+      alert.tag = UIAlertView_Alert;
+      [alert show];
+      _alertCallback=callback;
+    }
+    
+    if([name isEqualToString:@"confirm"])
+    {
+      
+      UIAlertView *alert = [[UIAlertView alloc] initWithTitle:[params objectAtIndex:0]
+                                                      message:[params objectAtIndex:1]
+                                                     delegate:self
+                                            cancelButtonTitle:[params objectAtIndex:2]
+                                            otherButtonTitles:[params objectAtIndex:3], nil];
+      alert.tag = UIAlertView_Confirm;
+      [alert show];
+      _confirmCallback=callback;
+    }
+    
+    if([name isEqualToString:@"open"])
+    {
+      [self openBroswer:[params objectAtIndex:0]];
+      NSString *exejs=[callback stringByAppendingString:@"()"];
+      [self runScript:exejs];
+    }
+    
+    if ([name isEqualToString:@"Login"]) {
+      _externalCallback = @"ExternalCallback";
+      _callbackFn = callback;
+//      [self runScript:[callback stringByAppendingString:@"('true')"]];
+      dispatchEvent(EVENT_FROM_WEBVEIEW_TO_LOGIN, nil);
+    }
+    
+    return NO;
+  }
+  
+  if (![request.URL.scheme isEqual:@"http"] && ![request.URL.scheme isEqual:@"https"]) {
+    [[UIApplication sharedApplication] openURL:[request URL]];
+    return NO;
+  }
+  return YES;
+}
+
+#pragma mark - for js
+
+- (void)openBroswer:(NSString*)url{
+  [[UIApplication sharedApplication] openURL:[[NSURL alloc] initWithString:url]];
+}
+
+- (void)runScript:(NSString *)script{
+  [self.webView stringByEvaluatingJavaScriptFromString:script];
+}
+
+#pragma mark - perform externalCallback
+
+- (void)loginCallBackWithData:(NSNotification *)notification
+{
+  trace(@"loginCallBackWithData:%@",notification.userInfo);
+  
+  NSDictionary *dic = notification.userInfo;
+  if ([[dic valueForKeyPath:@"Success"] boolValue]){
+    [self runScript:[_externalCallback stringByAppendingString:[NSString stringWithFormat:@"('%@',true,'%@')",_callbackFn,[dic valueForKey:@"Token"]]]];
+    
+  }
+  else {
+    [self runScript:[_externalCallback stringByAppendingString:[NSString stringWithFormat:@"('%@',false)", _callbackFn]]];
+    
+  }
 }
 
 @end
